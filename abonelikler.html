@@ -436,6 +436,12 @@
     .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
     .section-title { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 0 0 8px; }
 
+    /* Mobile chart */
+    .mobile-chart-section { padding-bottom: 4px; }
+    .mobile-chart-container { position: relative; height: 180px; padding: 0 16px; }
+    #mobile-chart-legend { padding: 8px 16px 12px; display: flex; flex-wrap: wrap; gap: 5px; }
+    @media (min-width: 768px) { .mobile-chart-section { display: none !important; } }
+
     /* Rate badge */
     .rate-badge {
       font-size: .62rem; color: var(--muted); margin-top: 4px;
@@ -530,6 +536,13 @@
     <div id="upcoming-section" class="upcoming-section" style="display:none">
       <div class="section-title" style="padding-left:0">Yaklaşan Yenilemeler (7 gün)</div>
       <div id="upcoming-list"></div>
+    </div>
+
+    <!-- Mobile chart -->
+    <div id="mobile-chart-section" class="mobile-chart-section" style="display:none">
+      <div class="section-title" style="padding:0 16px 6px">📊 Kategori Dağılımı</div>
+      <div class="mobile-chart-container"><canvas id="cat-chart-mobile"></canvas></div>
+      <div class="sb-chart-legend" id="mobile-chart-legend"></div>
     </div>
 
     <!-- Toolbar -->
@@ -851,53 +864,59 @@ function hexToRgb(hex) {
 }
 
 /* ══ CHART ══ */
-function renderChart(actives) {
-  const wrap = document.getElementById('sb-chart-wrap');
-  if (!actives.length) { wrap.style.display='none'; if(catChart){catChart.destroy();catChart=null;} return; }
+let catChartMobile = null;
 
+function buildChartData(actives) {
   const catMap = {};
-  actives.forEach(s => {
-    const v = monthlyTRY(s);
-    catMap[s.category] = (catMap[s.category] || 0) + v;
-  });
-
+  actives.forEach(s => { catMap[s.category] = (catMap[s.category] || 0) + monthlyTRY(s); });
   const labels = Object.keys(catMap);
-  const data   = Object.values(catMap);
-  const colors = CHART_COLORS.slice(0, labels.length);
+  return { labels, data: Object.values(catMap), colors: CHART_COLORS.slice(0, labels.length) };
+}
 
-  wrap.style.display = 'block';
-
-  // Legend
-  const legend = document.getElementById('sb-chart-legend');
-  legend.innerHTML = '';
-  labels.forEach((l, i) => {
-    const item = document.createElement('div');
-    item.className = 'sb-legend-item';
-    item.innerHTML = `<span class="sb-legend-dot" style="background:${colors[i]}"></span>${l}`;
-    legend.appendChild(item);
-  });
-
-  const ctx = document.getElementById('cat-chart').getContext('2d');
-  if (catChart) catChart.destroy();
-  catChart = new Chart(ctx, {
+function drawChart(canvasId, existing, { labels, data, colors }) {
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if (!ctx) return existing;
+  if (existing) existing.destroy();
+  return new Chart(ctx, {
     type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }]
-    },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: c => ` ${c.label}: ₺${c.raw.toFixed(0)}/ay`
-          }
-        }
+        tooltip: { callbacks: { label: c => ` ${c.label}: ₺${c.raw.toFixed(0)}/ay` } }
       }
     }
   });
+}
+
+function renderChart(actives) {
+  const sbWrap     = document.getElementById('sb-chart-wrap');
+  const mobileWrap = document.getElementById('mobile-chart-section');
+  if (!actives.length) {
+    sbWrap.style.display = mobileWrap.style.display = 'none';
+    if (catChart)       { catChart.destroy();       catChart = null; }
+    if (catChartMobile) { catChartMobile.destroy();  catChartMobile = null; }
+    return;
+  }
+
+  const cd = buildChartData(actives);
+  sbWrap.style.display = mobileWrap.style.display = 'block';
+
+  // Legends
+  [['sb-chart-legend', 'sb-legend-item'], ['mobile-chart-legend', 'sb-legend-item']].forEach(([legendId]) => {
+    const legend = document.getElementById(legendId);
+    legend.innerHTML = '';
+    cd.labels.forEach((l, i) => {
+      const item = document.createElement('div');
+      item.className = 'sb-legend-item';
+      item.innerHTML = `<span class="sb-legend-dot" style="background:${cd.colors[i]}"></span>${l}`;
+      legend.appendChild(item);
+    });
+  });
+
+  catChart       = drawChart('cat-chart',        catChart,       cd);
+  catChartMobile = drawChart('cat-chart-mobile', catChartMobile, cd);
 }
 
 /* ══ DRAG & DROP ══ */
