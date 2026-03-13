@@ -268,9 +268,6 @@
       box-shadow: 0 4px 16px rgba(108,99,255,.12);
     }
     .sub-card.paused { opacity: .5; }
-    .sub-card.drag-over { border-color: var(--accent); background: rgba(108,99,255,.08); }
-    .sub-card[draggable="true"] { cursor: grab; }
-    .sub-card[draggable="true"]:active { cursor: grabbing; }
 
     .icon-circle {
       width: 42px; height: 42px; border-radius: 11px;
@@ -721,7 +718,6 @@ let apiKey       = localStorage.getItem('jb_key') || '';
 let binId        = localStorage.getItem('jb_bin') || '';
 let syncTimer    = null;
 let catChart     = null;
-let dragSrcId    = null;
 
 /* ══ EXCHANGE RATES ══ */
 let rates = JSON.parse(localStorage.getItem('ex_rates') || '{}');
@@ -919,38 +915,6 @@ function renderChart(actives) {
   catChartMobile = drawChart('cat-chart-mobile', catChartMobile, cd);
 }
 
-/* ══ DRAG & DROP ══ */
-function enableDrag(card, id) {
-  card.draggable = true;
-  card.addEventListener('dragstart', e => {
-    dragSrcId = id;
-    setTimeout(() => card.style.opacity = '.4', 0);
-    e.dataTransfer.effectAllowed = 'move';
-  });
-  card.addEventListener('dragend', () => {
-    card.style.opacity = '';
-    document.querySelectorAll('.sub-card').forEach(c => c.classList.remove('drag-over'));
-  });
-  card.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragSrcId !== id) {
-      document.querySelectorAll('.sub-card').forEach(c => c.classList.remove('drag-over'));
-      card.classList.add('drag-over');
-    }
-  });
-  card.addEventListener('drop', async e => {
-    e.preventDefault();
-    if (dragSrcId === id) return;
-    const fromIdx = subs.findIndex(s => s.id === dragSrcId);
-    const toIdx   = subs.findIndex(s => s.id === id);
-    if (fromIdx < 0 || toIdx < 0) return;
-    const [item] = subs.splice(fromIdx, 1);
-    subs.splice(toIdx, 0, item);
-    await saveAndSync();
-    render();
-  });
-}
 
 /* ══ RENDER ══ */
 function render() {
@@ -1039,7 +1003,16 @@ function render() {
     list.innerHTML=`<div class="empty"><div class="icon">${q?'🔍':'📭'}</div><p>${q?'Arama sonucu bulunamadı.':'Henüz abonelik yok.<br>+ butonuna basarak ekleyebilirsiniz.'}</p></div>`;
     return;
   }
-  filtered.forEach(s=>{
+  const sorted = [...filtered].sort((a, b) => {
+    // Active first, then paused, then cancelled
+    const order = {active:0, paused:1, cancelled:2};
+    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    // Within same status: sort by renewal date ascending, no-date at end
+    const da = a.renew ? new Date(a.renew) : Infinity;
+    const db = b.renew ? new Date(b.renew) : Infinity;
+    return da - db;
+  });
+  sorted.forEach(s=>{
     const d=daysUntil(s.renew);
     let rClass='renew-ok', rText='';
     if (s.renew) {
@@ -1062,7 +1035,6 @@ function render() {
       </div>
       <div class="status-dot dot-${s.status}"></div>`;
     card.onclick=()=>openModal(s.id);
-    enableDrag(card, s.id);
     list.appendChild(card);
   });
 }
