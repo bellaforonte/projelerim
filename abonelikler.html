@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BBTC | Abonelik Takibi</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -73,9 +74,10 @@
       transition: border-color .2s, color .2s;
     }
     .icon-btn:hover { border-color: var(--accent); color: var(--text); }
+    .icon-btn.notif-on { border-color: var(--yellow); color: var(--yellow); }
 
     /* ══════════════════════════════
-       APP BODY — mobile: single col, desktop: sidebar + main
+       APP BODY
     ══════════════════════════════ */
     .app-body {
       display: flex;
@@ -86,7 +88,7 @@
        SIDEBAR (desktop only)
     ══════════════════════════════ */
     .sidebar {
-      display: none; /* hidden on mobile */
+      display: none;
     }
 
     @media (min-width: 768px) {
@@ -107,148 +109,100 @@
       }
     }
 
-    /* Sidebar: big stat block */
     .sb-bignum {
-      font-size: 2.8rem;
-      font-weight: 800;
-      color: var(--accent);
-      line-height: 1;
-      margin-bottom: 2px;
+      font-size: 2.8rem; font-weight: 800; color: var(--accent);
+      line-height: 1; margin-bottom: 2px;
     }
     .sb-biglbl {
-      font-size: .72rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .8px;
-      margin-bottom: 14px;
+      font-size: .72rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .8px; margin-bottom: 14px;
     }
-
-    .sb-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
+    .sb-row { display: flex; gap: 12px; margin-bottom: 8px; }
     .sb-mini {
-      flex: 1;
-      background: var(--card2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
+      flex: 1; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px;
     }
     .sb-mini .v { font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
     .sb-mini .l { font-size: .67rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .sb-mini .s { font-size: .6rem; color: var(--muted); }
     .sb-mini.green .v { color: var(--green); }
     .sb-mini.red   .v { color: var(--pink); }
 
     .sb-divider { height: 1px; background: var(--border); margin: 14px 0 12px; }
 
     .sb-section-title {
-      font-size: .68rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-      margin-top: 4px;
+      font-size: .68rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 8px; margin-top: 4px;
     }
 
-    /* Sidebar: upcoming */
+    /* Sidebar chart */
+    .sb-chart-wrap { margin-bottom: 4px; }
+    .sb-chart-container { position: relative; height: 160px; margin-top: 6px; }
+    .sb-chart-legend { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .sb-legend-item {
+      display: flex; align-items: center; gap: 4px;
+      font-size: .65rem; color: var(--muted);
+    }
+    .sb-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Sidebar upcoming */
     .sb-upcoming-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      background: var(--card2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 6px;
     }
     .sb-upcoming-item .name { font-size: .82rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sb-upcoming-item .days { font-size: .72rem; color: var(--yellow); flex-shrink: 0; }
 
-    /* Sidebar: category list */
+    /* Sidebar category list */
     .sb-cat-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 0;
-      font-size: .82rem;
-      cursor: pointer;
-      border-radius: 8px;
-      padding: 6px 8px;
-      transition: background .15s;
+      display: flex; align-items: center; gap: 8px;
+      font-size: .82rem; cursor: pointer; border-radius: 8px;
+      padding: 6px 8px; transition: background .15s;
     }
     .sb-cat-row:hover { background: var(--card2); }
     .sb-cat-row.active { background: rgba(108,99,255,.15); color: var(--accent); }
     .sb-cat-name { flex: 1; }
     .sb-cat-count {
-      background: var(--border);
-      border-radius: 10px;
-      padding: 1px 7px;
-      font-size: .7rem;
-      color: var(--muted);
+      background: var(--border); border-radius: 10px;
+      padding: 1px 7px; font-size: .7rem; color: var(--muted);
     }
 
-    /* Sidebar: add button */
-    .sb-add {
-      margin-top: auto;
-      padding-top: 16px;
-    }
+    .sb-add { margin-top: auto; padding-top: 16px; }
     .sb-add-btn {
-      width: 100%;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 11px;
-      padding: 11px;
-      font-size: .88rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .2s;
+      width: 100%; background: var(--accent); color: #fff; border: none;
+      border-radius: 11px; padding: 11px; font-size: .88rem; font-weight: 600;
+      cursor: pointer; transition: opacity .2s;
     }
     .sb-add-btn:hover { opacity: .88; }
 
     /* ══════════════════════════════
        MAIN CONTENT
     ══════════════════════════════ */
-    .main-content {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-    }
+    .main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
-    /* ── Mobile-only summary cards ── */
     .mobile-summary {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      padding: 14px 16px;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; padding: 14px 16px;
     }
     .sum-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 13px 10px;
-      text-align: center;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 13px 10px; text-align: center;
     }
     .sum-card .val { font-size: 1.15rem; font-weight: 700; margin-bottom: 3px; }
     .sum-card .lbl { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .sum-card .sub { font-size: .6rem; color: var(--muted); margin-top: 2px; }
     .sum-card.green .val  { color: var(--green); }
     .sum-card.purple .val { color: var(--accent); }
     .sum-card.red .val    { color: var(--pink); }
 
-    @media (min-width: 768px) {
-      .mobile-summary { display: none; } /* hidden on desktop — info is in sidebar */
-    }
+    @media (min-width: 768px) { .mobile-summary { display: none; } }
 
-    /* ── Mobile upcoming (below summary, above filters) ── */
     .upcoming-section { padding: 0 16px 10px; }
     .upcoming-card {
       background: linear-gradient(135deg, rgba(108,99,255,.12), rgba(255,101,132,.07));
-      border: 1px solid rgba(108,99,255,.25);
-      border-radius: var(--radius);
-      padding: 10px 13px;
-      display: flex; align-items: center; justify-content: space-between;
+      border: 1px solid rgba(108,99,255,.25); border-radius: var(--radius);
+      padding: 10px 13px; display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 7px;
     }
     .upcoming-card .left { display: flex; align-items: center; gap: 9px; }
@@ -256,91 +210,72 @@
     .upcoming-card .days { font-size: .72rem; color: var(--yellow); }
     .upcoming-card .price { font-size: .85rem; font-weight: 700; color: var(--green); }
 
-    @media (min-width: 768px) {
-      .upcoming-section { display: none; } /* sidebar handles this */
-    }
+    @media (min-width: 768px) { .upcoming-section { display: none; } }
 
-    /* ── Toolbar (filter pills + count) ── */
+    /* ── Toolbar ── */
     .toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 16px 10px;
-      gap: 8px;
+      display: flex; flex-direction: column;
+      padding: 10px 16px 10px; gap: 8px;
+    }
+    .search-wrap { position: relative; }
+    .search-wrap input {
+      width: 100%; background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 10px; padding: 8px 11px 8px 32px;
+      font-size: .85rem; outline: none; transition: border-color .18s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap::before {
+      content: '🔍'; position: absolute; left: 9px; top: 50%;
+      transform: translateY(-50%); font-size: .8rem; pointer-events: none;
+    }
+    .toolbar-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
     .filter-bar {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      flex: 1;
+      display: flex; gap: 6px; overflow-x: auto;
+      scrollbar-width: none; flex: 1;
     }
     .filter-bar::-webkit-scrollbar { display: none; }
     .pill {
-      flex-shrink: 0;
-      background: var(--card);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      border-radius: 20px;
-      padding: 5px 13px;
-      font-size: .78rem;
-      cursor: pointer;
-      transition: all .18s;
-      white-space: nowrap;
+      flex-shrink: 0; background: var(--card); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 20px; padding: 5px 13px;
+      font-size: .78rem; cursor: pointer; transition: all .18s; white-space: nowrap;
     }
     .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .list-count {
-      font-size: .72rem;
-      color: var(--muted);
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
+    .list-count { font-size: .72rem; color: var(--muted); flex-shrink: 0; white-space: nowrap; }
 
-    @media (min-width: 768px) {
-      .toolbar { padding: 20px 24px 14px; }
-    }
+    @media (min-width: 768px) { .toolbar { padding: 20px 24px 14px; } }
 
-    /* ── Subscription grid/list ── */
+    /* ── Subscription grid ── */
     .sub-list {
       padding: 0 16px 80px;
-      display: grid;
-      grid-template-columns: 1fr;           /* mobile: 1 col */
-      gap: 10px;
+      display: grid; grid-template-columns: 1fr; gap: 10px;
     }
-
     @media (min-width: 768px) {
-      .sub-list {
-        padding: 0 24px 32px;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* desktop: 2+ col */
-      }
+      .sub-list { padding: 0 24px 32px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
     }
 
     /* ── Subscription card ── */
     .sub-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      transition: border-color .18s, transform .15s, box-shadow .15s;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; transition: border-color .18s, transform .15s, box-shadow .15s;
       position: relative;
     }
     .sub-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-1px);
+      border-color: var(--accent); transform: translateY(-1px);
       box-shadow: 0 4px 16px rgba(108,99,255,.12);
     }
     .sub-card.paused { opacity: .5; }
+    .sub-card.drag-over { border-color: var(--accent); background: rgba(108,99,255,.08); }
+    .sub-card[draggable="true"] { cursor: grab; }
+    .sub-card[draggable="true"]:active { cursor: grabbing; }
 
     .icon-circle {
-      width: 42px; height: 42px;
-      border-radius: 11px;
+      width: 42px; height: 42px; border-radius: 11px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.25rem;
-      flex-shrink: 0;
+      font-size: 1.25rem; flex-shrink: 0;
     }
     .sub-info { flex: 1; min-width: 0; }
     .sub-name { font-weight: 600; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -362,24 +297,19 @@
     .dot-cancelled { background: var(--red); }
 
     /* ── Empty state ── */
-    .empty {
-      text-align: center; padding: 52px 16px; color: var(--muted);
-      grid-column: 1 / -1;
-    }
+    .empty { text-align: center; padding: 52px 16px; color: var(--muted); grid-column: 1 / -1; }
     .empty .icon { font-size: 2.8rem; margin-bottom: 10px; }
     .empty p { font-size: .88rem; }
 
-    /* ── FAB (mobile only) ── */
+    /* ── FAB ── */
     .fab {
       position: fixed; bottom: 24px; right: 20px;
       width: 54px; height: 54px;
       background: var(--accent); color: #fff; border: none;
-      border-radius: 50%; font-size: 1.55rem;
-      cursor: pointer;
+      border-radius: 50%; font-size: 1.55rem; cursor: pointer;
       box-shadow: 0 4px 20px rgba(108,99,255,.5);
       display: flex; align-items: center; justify-content: center;
-      transition: transform .15s;
-      z-index: 200;
+      transition: transform .15s; z-index: 200;
     }
     .fab:active { transform: scale(.9); }
     @media (min-width: 768px) { .fab { display: none; } }
@@ -434,6 +364,15 @@
     select option { background: var(--card); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+    /* Advance renew button */
+    .btn-advance {
+      width: 100%; background: rgba(249,168,37,.1); color: var(--yellow);
+      border: 1px solid rgba(249,168,37,.3); border-radius: 10px;
+      padding: 10px; font-size: .85rem; cursor: pointer;
+      transition: background .18s; margin-bottom: 13px;
+    }
+    .btn-advance:hover { background: rgba(249,168,37,.18); }
+
     /* Emoji / color pickers */
     .emoji-grid {
       display: grid; grid-template-columns: repeat(8, 1fr);
@@ -484,13 +423,15 @@
     }
     .setup-box b { color: var(--text); }
     .setup-box a { color: var(--accent); }
-    .info-badge {
-      display: inline-block; background: rgba(108,99,255,.12); color: var(--accent);
-      border: 1px solid rgba(108,99,255,.28); border-radius: 6px;
-      padding: 2px 8px; font-size: .73rem; font-family: monospace; word-break: break-all;
-    }
     .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
     .section-title { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 0 0 8px; }
+
+    /* Rate badge */
+    .rate-badge {
+      font-size: .62rem; color: var(--muted); margin-top: 4px;
+      display: none;
+    }
+    .rate-badge.visible { display: block; }
   </style>
 </head>
 <body>
@@ -502,6 +443,7 @@
   </div>
   <div class="header-right">
     <div id="sync-status"></div>
+    <button class="icon-btn" id="notif-btn" title="Bildirimler">🔔</button>
     <button class="icon-btn" id="settings-btn" title="Ayarlar">⚙️</button>
   </div>
 </header>
@@ -517,14 +459,26 @@
       <div class="sb-mini green">
         <div class="v" id="sb-monthly">₺0</div>
         <div class="l">Aylık</div>
+        <div class="s" id="sb-monthly-sub"></div>
       </div>
       <div class="sb-mini red">
         <div class="v" id="sb-yearly">₺0</div>
         <div class="l">Yıllık</div>
+        <div class="s" id="sb-yearly-sub"></div>
       </div>
     </div>
 
     <div class="sb-divider"></div>
+
+    <!-- Chart -->
+    <div id="sb-chart-wrap" class="sb-chart-wrap" style="display:none">
+      <div class="sb-section-title">📊 Kategori Dağılımı</div>
+      <div class="sb-chart-container">
+        <canvas id="cat-chart"></canvas>
+      </div>
+      <div class="sb-chart-legend" id="sb-chart-legend"></div>
+      <div class="sb-divider"></div>
+    </div>
 
     <!-- Upcoming -->
     <div id="sb-upcoming-wrap" style="display:none">
@@ -545,7 +499,7 @@
   <!-- ══ MAIN ══ -->
   <main class="main-content">
 
-    <!-- Mobile summary (hidden on desktop) -->
+    <!-- Mobile summary -->
     <div class="mobile-summary">
       <div class="sum-card purple">
         <div class="val" id="total-count">0</div>
@@ -554,6 +508,7 @@
       <div class="sum-card green">
         <div class="val" id="monthly-total">₺0</div>
         <div class="lbl">Aylık</div>
+        <div class="sub" id="monthly-sub"></div>
       </div>
       <div class="sum-card red">
         <div class="val" id="yearly-total">₺0</div>
@@ -561,7 +516,7 @@
       </div>
     </div>
 
-    <!-- Mobile upcoming (hidden on desktop) -->
+    <!-- Mobile upcoming -->
     <div id="upcoming-section" class="upcoming-section" style="display:none">
       <div class="section-title" style="padding-left:0">Yaklaşan Yenilemeler (7 gün)</div>
       <div id="upcoming-list"></div>
@@ -569,13 +524,18 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-      <div class="filter-bar" id="filter-bar">
-        <div class="pill active" data-filter="all">Tümü</div>
-        <div class="pill" data-filter="active">Aktif</div>
-        <div class="pill" data-filter="paused">Duraklatılmış</div>
-        <div class="pill" data-filter="cancelled">İptal</div>
+      <div class="search-wrap">
+        <input id="search-input" type="text" placeholder="Abonelik ara…" autocomplete="off" />
       </div>
-      <div class="list-count" id="list-title">—</div>
+      <div class="toolbar-row">
+        <div class="filter-bar" id="filter-bar">
+          <div class="pill active" data-filter="all">Tümü</div>
+          <div class="pill" data-filter="active">Aktif</div>
+          <div class="pill" data-filter="paused">Duraklatılmış</div>
+          <div class="pill" data-filter="cancelled">İptal</div>
+        </div>
+        <div class="list-count" id="list-title">—</div>
+      </div>
     </div>
 
     <!-- Cards -->
@@ -594,6 +554,10 @@
       <h2 id="modal-title">Yeni Abonelik</h2>
       <button class="close-btn" id="close-modal">✕</button>
     </div>
+    <!-- Auto-advance button -->
+    <button class="btn-advance" id="advance-renew-btn" style="display:none">
+      🔄 Yenileme Tarihini İlerlet
+    </button>
     <div class="form-group">
       <label>Servis Adı</label>
       <input id="f-name" type="text" placeholder="Netflix, Spotify, Sigorta…" />
@@ -684,7 +648,7 @@
       2️⃣ <b>Sign Up</b> ile ücretsiz hesap açın<br>
       3️⃣ Giriş → <b>API Keys</b> → <b>Master Key</b>'i kopyalayın<br>
       4️⃣ Aşağıya yapıştırın → <b>Kaydet & Bağlan</b>'a basın<br>
-      5️⃣ Aynı URL'yi diğer cihazda açın, aynı key'i girin — hazır!
+      5️⃣ Diğer cihazda aynı key + Depolama ID'yi girin — hazır!
     </div>
     <div class="form-group">
       <label>JSONBin Master Key</label>
@@ -711,26 +675,18 @@
 <script>
 /* ══ CONSTANTS ══ */
 const EMOJIS = [
-  // Eğlence & Medya
   '📺','🎵','🎬','🎙️','📻',
-  // Teknoloji & AI
   '💻','🤖','🧠','⚡','🔮',
-  // Oyun
   '🎮','🕹️','👾',
-  // Alışveriş & Teslimat
   '🛍️','🛒','📦','🚚',
-  // Sağlık & Spor
   '💊','🏋️','🧘','❤️‍🩹',
-  // Finans & Sigorta
   '🛡️','💳','🏦',
-  // Bulut & Yazılım
   '☁️','🔐','🗄️',
-  // Eğitim & Haber
   '📚','📰','🎓',
-  // Diğer
   '✈️','🏠','🎯','🔔','📋'
 ];
-const COLORS  = ['#6c63ff','#ff6584','#43e97b','#f9a825','#29b6f6','#ff7043','#ab47bc','#26c6da','#d4e157','#ef5350'];
+const COLORS = ['#6c63ff','#ff6584','#43e97b','#f9a825','#29b6f6','#ff7043','#ab47bc','#26c6da','#d4e157','#ef5350'];
+const CHART_COLORS = ['#6c63ff','#ff6584','#43e97b','#f9a825','#29b6f6','#ff7043','#ab47bc','#26c6da','#d4e157','#ef5350','#80cbc4','#ce93d8'];
 const BIN_API = 'https://api.jsonbin.io/v3/b';
 
 /* ══ STATE ══ */
@@ -739,9 +695,42 @@ let editId       = null;
 let selEmoji     = '📦';
 let selColor     = COLORS[0];
 let activeFilter = 'all';
+let searchQuery  = '';
 let apiKey       = localStorage.getItem('jb_key') || '';
 let binId        = localStorage.getItem('jb_bin') || '';
 let syncTimer    = null;
+let catChart     = null;
+let dragSrcId    = null;
+
+/* ══ EXCHANGE RATES ══ */
+let rates = JSON.parse(localStorage.getItem('ex_rates') || '{}');
+let ratesTs = parseInt(localStorage.getItem('ex_rates_ts') || '0');
+
+async function fetchRates() {
+  const now = Date.now();
+  if (Object.keys(rates).length && now - ratesTs < 3600000) return;
+  try {
+    const r = await fetch('https://open.er-api.com/v6/latest/TRY');
+    const d = await r.json();
+    if (d.result === 'success') {
+      rates = d.rates;
+      localStorage.setItem('ex_rates', JSON.stringify(rates));
+      localStorage.setItem('ex_rates_ts', now.toString());
+      render();
+    }
+  } catch {}
+}
+
+function toTRY(amount, currency) {
+  if (currency === '₺') return amount;
+  const sym = {$:'USD','€':'EUR','£':'GBP'}[currency];
+  if (!sym || !rates[sym]) return amount;
+  return amount / rates[sym];
+}
+
+function hasMultiCurrency() {
+  return subs.filter(s=>s.status==='active').some(s=>s.currency!=='₺');
+}
 
 /* ══ SYNC STATUS ══ */
 const $sync = document.getElementById('sync-status');
@@ -790,6 +779,41 @@ async function initSync() {
   } catch { setSyncStatus('error','❌ Bağlanamadı'); }
 }
 
+/* ══ NOTIFICATIONS ══ */
+async function requestNotifications() {
+  if (!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  updateNotifBtn(perm === 'granted');
+}
+
+function updateNotifBtn(granted) {
+  const btn = document.getElementById('notif-btn');
+  if (granted) btn.classList.add('notif-on'); else btn.classList.remove('notif-on');
+}
+
+function checkAndNotify() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const today = new Date().toDateString();
+  const key = 'notified_' + today;
+  if (localStorage.getItem(key)) return;
+
+  const upcoming = subs.filter(s => s.status === 'active').filter(s => {
+    const d = daysUntil(s.renew);
+    return d !== null && d >= 0 && d <= 3;
+  });
+
+  if (upcoming.length) {
+    upcoming.forEach(s => {
+      const d = daysUntil(s.renew);
+      new Notification(`🔔 ${s.name}`, {
+        body: d === 0 ? 'Bugün yenileniyor!' : `${d} gün sonra yenileniyor (${s.currency}${parseFloat(s.price).toFixed(2)})`,
+        tag: s.id
+      });
+    });
+    localStorage.setItem(key, '1');
+  }
+}
+
 /* ══ EMOJI / COLOR PICKERS ══ */
 const emojiGrid = document.getElementById('emoji-grid');
 EMOJIS.forEach(e => {
@@ -810,37 +834,129 @@ COLORS.forEach(c => {
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
 function daysUntil(d) { if(!d) return null; return Math.ceil((new Date(d)-new Date(new Date().toDateString()))/86400000); }
 function monthlyEquiv(s) { const n=parseFloat(s.price)||0; return s.cycle==='yearly'?n/12:n; }
+function monthlyTRY(s) { return toTRY(monthlyEquiv(s), s.currency); }
 function hexToRgb(hex) {
   const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+/* ══ CHART ══ */
+function renderChart(actives) {
+  const wrap = document.getElementById('sb-chart-wrap');
+  if (!actives.length) { wrap.style.display='none'; if(catChart){catChart.destroy();catChart=null;} return; }
+
+  const catMap = {};
+  actives.forEach(s => {
+    const v = monthlyTRY(s);
+    catMap[s.category] = (catMap[s.category] || 0) + v;
+  });
+
+  const labels = Object.keys(catMap);
+  const data   = Object.values(catMap);
+  const colors = CHART_COLORS.slice(0, labels.length);
+
+  wrap.style.display = 'block';
+
+  // Legend
+  const legend = document.getElementById('sb-chart-legend');
+  legend.innerHTML = '';
+  labels.forEach((l, i) => {
+    const item = document.createElement('div');
+    item.className = 'sb-legend-item';
+    item.innerHTML = `<span class="sb-legend-dot" style="background:${colors[i]}"></span>${l}`;
+    legend.appendChild(item);
+  });
+
+  const ctx = document.getElementById('cat-chart').getContext('2d');
+  if (catChart) catChart.destroy();
+  catChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => ` ${c.label}: ₺${c.raw.toFixed(0)}/ay`
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ══ DRAG & DROP ══ */
+function enableDrag(card, id) {
+  card.draggable = true;
+  card.addEventListener('dragstart', e => {
+    dragSrcId = id;
+    setTimeout(() => card.style.opacity = '.4', 0);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  card.addEventListener('dragend', () => {
+    card.style.opacity = '';
+    document.querySelectorAll('.sub-card').forEach(c => c.classList.remove('drag-over'));
+  });
+  card.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragSrcId !== id) {
+      document.querySelectorAll('.sub-card').forEach(c => c.classList.remove('drag-over'));
+      card.classList.add('drag-over');
+    }
+  });
+  card.addEventListener('drop', async e => {
+    e.preventDefault();
+    if (dragSrcId === id) return;
+    const fromIdx = subs.findIndex(s => s.id === dragSrcId);
+    const toIdx   = subs.findIndex(s => s.id === id);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [item] = subs.splice(fromIdx, 1);
+    subs.splice(toIdx, 0, item);
+    await saveAndSync();
+    render();
+  });
+}
+
 /* ══ RENDER ══ */
 function render() {
-  const filtered = subs.filter(s => activeFilter==='all' || s.status===activeFilter);
+  const q        = searchQuery.toLowerCase();
   const actives  = subs.filter(s => s.status==='active');
-  const monthly  = actives.reduce((a,s)=>a+monthlyEquiv(s), 0);
+  const filtered = subs.filter(s => {
+    const matchFilter = activeFilter==='all' || s.status===activeFilter;
+    const matchSearch = !q || s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q) || (s.notes||'').toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
 
   /* ─ Stats ─ */
-  // Mobile
-  document.getElementById('total-count').textContent   = actives.length;
-  document.getElementById('monthly-total').textContent = '₺'+monthly.toFixed(0);
-  document.getElementById('yearly-total').textContent  = '₺'+(monthly*12).toFixed(0);
-  // Sidebar
-  document.getElementById('sb-bignum').textContent  = actives.length;
-  document.getElementById('sb-monthly').textContent = '₺'+monthly.toFixed(0);
-  document.getElementById('sb-yearly').textContent  = '₺'+(monthly*12).toFixed(0);
+  const monthlyTotal = actives.reduce((a,s)=>a+monthlyTRY(s), 0);
+  const multi = hasMultiCurrency() && Object.keys(rates).length;
+  const subLabel = multi ? '≈ TL eşdeğeri' : '';
+
+  document.getElementById('total-count').textContent    = actives.length;
+  document.getElementById('monthly-total').textContent  = '₺'+monthlyTotal.toFixed(0);
+  document.getElementById('yearly-total').textContent   = '₺'+(monthlyTotal*12).toFixed(0);
+  document.getElementById('monthly-sub').textContent    = subLabel;
+  document.getElementById('sb-bignum').textContent      = actives.length;
+  document.getElementById('sb-monthly').textContent     = '₺'+monthlyTotal.toFixed(0);
+  document.getElementById('sb-yearly').textContent      = '₺'+(monthlyTotal*12).toFixed(0);
+  document.getElementById('sb-monthly-sub').textContent = subLabel;
+  document.getElementById('sb-yearly-sub').textContent  = subLabel;
 
   /* ─ List count ─ */
   document.getElementById('list-title').textContent = filtered.length
-    ? filtered.length + (filtered.length===1?' abonelik':' abonelik') : '';
+    ? filtered.length + ' abonelik' : '';
 
   /* ─ Upcoming ─ */
   const upcoming = actives
     .filter(s=>{ const d=daysUntil(s.renew); return d!==null&&d>=0&&d<=7; })
     .sort((a,b)=>daysUntil(a.renew)-daysUntil(b.renew));
 
-  // Mobile upcoming
   const upSec  = document.getElementById('upcoming-section');
   const upList = document.getElementById('upcoming-list');
   upList.innerHTML = '';
@@ -854,8 +970,7 @@ function render() {
     });
   } else { upSec.style.display='none'; }
 
-  // Sidebar upcoming
-  const sbWrap = document.getElementById('sb-upcoming-wrap');
+  const sbWrap   = document.getElementById('sb-upcoming-wrap');
   const sbUpList = document.getElementById('sb-upcoming-list');
   sbUpList.innerHTML='';
   if (upcoming.length) {
@@ -882,15 +997,17 @@ function render() {
     const row=document.createElement('div');
     row.className='sb-cat-row';
     row.innerHTML=`<span class="sb-cat-name">${cat}</span><span class="sb-cat-count">${cnt}</span>`;
-    row.onclick=()=>{ /* category filter not implemented; open all */ };
     sbCats.appendChild(row);
   });
+
+  /* ─ Chart ─ */
+  renderChart(actives);
 
   /* ─ Cards ─ */
   const list=document.getElementById('sub-list');
   list.innerHTML='';
   if (!filtered.length) {
-    list.innerHTML=`<div class="empty"><div class="icon">📭</div><p>Henüz abonelik yok.<br>+ butonuna basarak ekleyebilirsiniz.</p></div>`;
+    list.innerHTML=`<div class="empty"><div class="icon">${q?'🔍':'📭'}</div><p>${q?'Arama sonucu bulunamadı.':'Henüz abonelik yok.<br>+ butonuna basarak ekleyebilirsiniz.'}</p></div>`;
     return;
   }
   filtered.forEach(s=>{
@@ -916,6 +1033,7 @@ function render() {
       </div>
       <div class="status-dot dot-${s.status}"></div>`;
     card.onclick=()=>openModal(s.id);
+    enableDrag(card, s.id);
     list.appendChild(card);
   });
 }
@@ -925,6 +1043,12 @@ function setFilter(f) {
   document.getElementById('filter-bar').querySelectorAll('.pill').forEach(p=>p.classList.toggle('active',p.dataset.filter===f));
   render();
 }
+
+/* ══ SEARCH ══ */
+document.getElementById('search-input').oninput = e => {
+  searchQuery = e.target.value;
+  render();
+};
 
 /* ══ SUBSCRIPTION MODAL ══ */
 function openModal(id=null) {
@@ -943,8 +1067,34 @@ function openModal(id=null) {
   selEmoji=s?.emoji||'📦'; selColor=s?.color||COLORS[0];
   emojiGrid.querySelectorAll('.emoji-btn').forEach(b=>b.classList.toggle('selected',b.textContent===selEmoji));
   colorGrid.querySelectorAll('.color-btn').forEach(b=>b.classList.toggle('selected',b.style.background===selColor||b.style.backgroundColor===hexToRgb(selColor)));
+
+  // Auto-advance button: show if renewal date is in the past
+  const advBtn = document.getElementById('advance-renew-btn');
+  if (s && s.renew && daysUntil(s.renew) < 0 && s.status === 'active') {
+    advBtn.style.display = 'block';
+    const nextDate = calcNextRenew(s.renew, s.cycle);
+    advBtn.textContent = `🔄 Tarihi İlerlet → ${new Date(nextDate).toLocaleDateString('tr-TR')}`;
+    advBtn.onclick = () => {
+      document.getElementById('f-renew').value = nextDate;
+      advBtn.style.display = 'none';
+    };
+  } else {
+    advBtn.style.display = 'none';
+  }
+
   document.getElementById('overlay').classList.add('open');
 }
+
+function calcNextRenew(dateStr, cycle) {
+  let d = new Date(dateStr);
+  const today = new Date();
+  while (d <= today) {
+    if (cycle === 'monthly') d.setMonth(d.getMonth() + 1);
+    else d.setFullYear(d.getFullYear() + 1);
+  }
+  return d.toISOString().split('T')[0];
+}
+
 function closeSubModal() { document.getElementById('overlay').classList.remove('open'); }
 
 document.getElementById('save-btn').onclick = async () => {
@@ -977,6 +1127,18 @@ document.getElementById('overlay').onclick = e=>{ if(e.target===e.currentTarget)
 document.getElementById('filter-bar').querySelectorAll('.pill').forEach(p=>{
   p.onclick=()=>setFilter(p.dataset.filter);
 });
+
+/* ══ NOTIFICATIONS BUTTON ══ */
+document.getElementById('notif-btn').onclick = async () => {
+  if (!('Notification' in window)) { alert('Tarayıcınız bildirimleri desteklemiyor.'); return; }
+  if (Notification.permission === 'granted') {
+    checkAndNotify();
+  } else {
+    await requestNotifications();
+    if (Notification.permission === 'granted') checkAndNotify();
+  }
+};
+updateNotifBtn(typeof Notification !== 'undefined' && Notification.permission === 'granted');
 
 /* ══ SETTINGS MODAL ══ */
 function openSettings() {
@@ -1045,6 +1207,8 @@ document.getElementById('import-file').onchange=async e=>{
 /* ══ BOOT ══ */
 render();
 initSync();
+fetchRates();
+setTimeout(checkAndNotify, 2000);
 </script>
 </body>
 </html>
