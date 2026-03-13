@@ -690,9 +690,9 @@
       <label>JSONBin Master Key</label>
       <input id="s-apikey" type="password" placeholder="$2b$10$…" autocomplete="off" />
     </div>
-    <div id="binid-row" class="form-group" style="display:none">
-      <label>Depolama ID (otomatik)</label>
-      <div id="binid-display" class="info-badge">—</div>
+    <div class="form-group">
+      <label>Depolama ID <span style="color:var(--muted);font-size:.68rem;text-transform:none;letter-spacing:0">(boş bırakırsanız otomatik oluşturulur)</span></label>
+      <input id="s-binid" type="text" placeholder="Mevcut cihazdan kopyalayın…" autocomplete="off" />
     </div>
     <div class="btn-row">
       <button class="btn-secondary" id="disconnect-btn" style="display:none">Bağlantıyı Kes</button>
@@ -981,11 +981,9 @@ document.getElementById('filter-bar').querySelectorAll('.pill').forEach(p=>{
 /* ══ SETTINGS MODAL ══ */
 function openSettings() {
   document.getElementById('s-apikey').value=apiKey;
-  const hasBin=!!binId;
-  document.getElementById('binid-row').style.display=hasBin?'block':'none';
-  if (hasBin) document.getElementById('binid-display').textContent=binId;
-  document.getElementById('disconnect-btn').style.display=hasBin?'block':'none';
-  document.getElementById('connect-btn').textContent=hasBin?'Güncelle':'Kaydet & Bağlan';
+  document.getElementById('s-binid').value=binId;
+  document.getElementById('disconnect-btn').style.display=binId?'block':'none';
+  document.getElementById('connect-btn').textContent=binId?'Güncelle':'Kaydet & Bağlan';
   document.getElementById('settings-overlay').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
@@ -997,6 +995,8 @@ document.getElementById('connect-btn').onclick = async () => {
   const key=document.getElementById('s-apikey').value.trim();
   if (!key) { document.getElementById('s-apikey').focus(); return; }
   apiKey=key; localStorage.setItem('jb_key',apiKey);
+  const manualBin=document.getElementById('s-binid').value.trim();
+  if (manualBin) { binId=manualBin; localStorage.setItem('jb_bin',binId); }
   const btn=document.getElementById('connect-btn');
   btn.textContent='Bağlanıyor…'; btn.disabled=true;
   try {
@@ -1006,8 +1006,7 @@ document.getElementById('connect-btn').onclick = async () => {
     } else {
       subs=await fetchFromCloud(); saveLocal(); render();
     }
-    document.getElementById('binid-row').style.display='block';
-    document.getElementById('binid-display').textContent=binId;
+    document.getElementById('s-binid').value=binId;
     document.getElementById('disconnect-btn').style.display='block';
     btn.textContent='Güncelle';
     setSyncStatus('ok','✅ Bağlı'); setTimeout(()=>{$sync.className='';},3000);
@@ -1022,7 +1021,7 @@ document.getElementById('disconnect-btn').onclick=()=>{
   apiKey=''; binId='';
   localStorage.removeItem('jb_key'); localStorage.removeItem('jb_bin');
   document.getElementById('s-apikey').value='';
-  document.getElementById('binid-row').style.display='none';
+  document.getElementById('s-binid').value='';
   document.getElementById('disconnect-btn').style.display='none';
   document.getElementById('connect-btn').textContent='Kaydet & Bağlan';
   setSyncStatus('offline','☁️ Çevrimdışı'); setTimeout(()=>{$sync.className='';},2500);
