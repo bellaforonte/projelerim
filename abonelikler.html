@@ -407,6 +407,16 @@
       border: 1px solid rgba(255,82,82,.28); border-radius: 10px;
       padding: 12px 16px; font-size: .88rem; cursor: pointer;
     }
+    .btn-warn {
+      background: rgba(249,168,37,.12); color: var(--yellow);
+      border: 1px solid rgba(249,168,37,.28); border-radius: 10px;
+      padding: 12px 16px; font-size: .88rem; cursor: pointer;
+    }
+    .btn-muted {
+      background: var(--card2); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 16px; font-size: .88rem; cursor: pointer;
+    }
     .btn-secondary {
       background: var(--card2); color: var(--text); border: 1px solid var(--border);
       border-radius: 10px; padding: 10px 15px; font-size: .85rem;
@@ -554,10 +564,6 @@
       <h2 id="modal-title">Yeni Abonelik</h2>
       <button class="close-btn" id="close-modal">✕</button>
     </div>
-    <!-- Auto-advance button -->
-    <button class="btn-advance" id="advance-renew-btn" style="display:none">
-      🔄 Yenileme Tarihini İlerlet
-    </button>
     <div class="form-group">
       <label>Servis Adı</label>
       <input id="f-name" type="text" placeholder="Netflix, Spotify, Sigorta…" />
@@ -629,6 +635,8 @@
     </div>
     <div class="btn-row">
       <button class="btn-danger" id="delete-btn" style="display:none">Sil</button>
+      <button class="btn-warn" id="cancel-btn" style="display:none">İptal Et</button>
+      <button class="btn-muted" id="pause-btn" style="display:none">Duraklat</button>
       <button class="btn-primary" id="save-btn">Kaydet</button>
     </div>
   </div>
@@ -773,7 +781,9 @@ async function initSync() {
   setSyncStatus('syncing','⏳ Yükleniyor…');
   try {
     subs = await fetchFromCloud();
-    saveLocal(); render();
+    saveLocal();
+    await autoAdvanceAll();
+    render();
     setSyncStatus('ok','✅ Senkronize');
     setTimeout(()=>{ $sync.className=''; }, 2500);
   } catch { setSyncStatus('error','❌ Bağlanamadı'); }
@@ -1068,18 +1078,24 @@ function openModal(id=null) {
   emojiGrid.querySelectorAll('.emoji-btn').forEach(b=>b.classList.toggle('selected',b.textContent===selEmoji));
   colorGrid.querySelectorAll('.color-btn').forEach(b=>b.classList.toggle('selected',b.style.background===selColor||b.style.backgroundColor===hexToRgb(selColor)));
 
-  // Auto-advance button: show if renewal date is in the past
-  const advBtn = document.getElementById('advance-renew-btn');
-  if (s && s.renew && daysUntil(s.renew) < 0 && s.status === 'active') {
-    advBtn.style.display = 'block';
-    const nextDate = calcNextRenew(s.renew, s.cycle);
-    advBtn.textContent = `🔄 Tarihi İlerlet → ${new Date(nextDate).toLocaleDateString('tr-TR')}`;
-    advBtn.onclick = () => {
-      document.getElementById('f-renew').value = nextDate;
-      advBtn.style.display = 'none';
-    };
+  // Cancel / Pause buttons (only when editing existing)
+  const cancelBtn = document.getElementById('cancel-btn');
+  const pauseBtn  = document.getElementById('pause-btn');
+  if (id && s) {
+    const st = s.status;
+    cancelBtn.style.display = st !== 'cancelled' ? 'block' : 'none';
+    if (st === 'active') {
+      pauseBtn.style.display = 'block';
+      pauseBtn.textContent = '⏸ Duraklat';
+    } else if (st === 'paused') {
+      pauseBtn.style.display = 'block';
+      pauseBtn.textContent = '▶️ Devam Et';
+    } else {
+      pauseBtn.style.display = 'none';
+    }
   } else {
-    advBtn.style.display = 'none';
+    cancelBtn.style.display = 'none';
+    pauseBtn.style.display  = 'none';
   }
 
   document.getElementById('overlay').classList.add('open');
@@ -1093,6 +1109,18 @@ function calcNextRenew(dateStr, cycle) {
     else d.setFullYear(d.getFullYear() + 1);
   }
   return d.toISOString().split('T')[0];
+}
+
+async function autoAdvanceAll() {
+  let changed = false;
+  subs = subs.map(s => {
+    if (s.status === 'active' && s.renew && daysUntil(s.renew) < 0) {
+      changed = true;
+      return { ...s, renew: calcNextRenew(s.renew, s.cycle) };
+    }
+    return s;
+  });
+  if (changed) await saveAndSync();
 }
 
 function closeSubModal() { document.getElementById('overlay').classList.remove('open'); }
@@ -1116,6 +1144,18 @@ document.getElementById('save-btn').onclick = async () => {
 document.getElementById('delete-btn').onclick = async () => {
   if (!editId) return;
   subs=subs.filter(s=>s.id!==editId);
+  await saveAndSync(); render(); closeSubModal();
+};
+document.getElementById('cancel-btn').onclick = async () => {
+  if (!editId) return;
+  subs=subs.map(s=>s.id===editId?{...s,status:'cancelled'}:s);
+  await saveAndSync(); render(); closeSubModal();
+};
+document.getElementById('pause-btn').onclick = async () => {
+  if (!editId) return;
+  const cur = subs.find(s=>s.id===editId)?.status;
+  const next = cur==='paused' ? 'active' : 'paused';
+  subs=subs.map(s=>s.id===editId?{...s,status:next}:s);
   await saveAndSync(); render(); closeSubModal();
 };
 document.getElementById('add-btn').onclick     = ()=>openModal();
@@ -1205,7 +1245,7 @@ document.getElementById('import-file').onchange=async e=>{
 };
 
 /* ══ BOOT ══ */
-render();
+autoAdvanceAll().then(()=>render());
 initSync();
 fetchRates();
 setTimeout(checkAndNotify, 2000);
